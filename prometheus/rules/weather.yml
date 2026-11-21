@@ -1,0 +1,59 @@
+# Alerts about the weather service. The label `service: weather` is what the alert intake routes on (see ../../intake-routes/mapping.json).
+groups:
+  - name: weather
+    rules:
+      - alert: WeatherApiDown
+        expr: probe_success{job="blackbox-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: The weather API does not answer
+          description: "GET /api/cities has failed for more than a minute (probe of {{ $labels.instance }})."
+
+      - alert: WeatherWebDown
+        expr: probe_success{job="blackbox-web"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: The weather web page does not answer
+          description: "The web page health check has failed for more than a minute (probe of {{ $labels.instance }})."
+
+      - alert: WeatherApiSlow
+        expr: probe_duration_seconds{job="blackbox-api"} > 1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: The weather API is slow
+          description: "GET /api/cities has taken more than 1 second for 3 minutes (now {{ $value | printf \"%.2f\" }} s)."
+
+      - alert: WeatherApiMemoryHigh
+        expr: demo_container_memory_bytes{service="weather-api"} > 400 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+          service: weather
+        annotations:
+          summary: The weather API uses a lot of memory
+          description: "The API container has used more than 400 MB for 5 minutes (limit 512 MB)."
+
+      - alert: WeatherApiRestarting
+        expr: increase(demo_container_restarts{service="weather-api"}[15m]) > 2
+        labels:
+          severity: warning
+          service: weather
+        annotations:
+          summary: The weather API keeps restarting
+          description: "Docker has restarted the API container more than twice in 15 minutes."
+
+      - alert: WeatherApiUnhealthy
+        expr: demo_container_health{service="weather-api"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: weather
+        annotations:
+          summary: The weather API container is unhealthy
+          description: "Docker's own health check of the API container has failed for 2 minutes."

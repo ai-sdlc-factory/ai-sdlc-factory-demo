@@ -1,0 +1,74 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # The monitoring watches itself: if one of these stops answering, the Overview dashboard and the "MonitoringTargetDown" alert say so.
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+  - job_name: promtail
+    static_configs:
+      - targets: ["promtail:9080"]
+  - job_name: grafana
+    static_configs:
+      - targets: ["grafana:3000"]
+  # What the alert intake has done: notifications, tickets, duplicates, failures.
+  - job_name: alert-intake
+    static_configs:
+      - targets: ["alert-intake:8000"]
+
+  # Container state, restarts, memory and CPU (see ../exporter/container_stats.py).
+  - job_name: containers
+    static_configs:
+      - targets: ["container-stats:9101"]
+
+  # Does the API answer, and how fast? One probe from the outside, the way a user would see it.
+  - job_name: blackbox-api
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets: ["http://weather-api:5080/api/cities"]
+        labels:
+          service: weather
+          component: api
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: blackbox-web
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets: ["http://weather-web:8080/healthz"]
+        labels:
+          service: weather
+          component: web
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

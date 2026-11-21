@@ -1,0 +1,13 @@
+{
+  "routes": [
+    {
+      "match": { "service": "weather" },
+      "repository": "valters/weather",
+      "labels": ["incident"],
+      "evidence": [
+        { "title": "Recent error lines of the API", "query": "{compose_service=\"weather-api\"} |~ \"(?i)(error|exception|fatal)\"" },
+        { "title": "Last lines of the API log", "query": "{compose_service=\"weather-api\"}" }
+      ]
+    }
+  ]
+}

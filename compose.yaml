@@ -1,0 +1,185 @@
+# A "production" for the demo: the weather application, run from the default branch of its repository, with monitoring around it.
+# Prometheus checks that the API and the web page answer and watches the containers, Loki keeps their logs, Grafana shows both, and an alert
+# fires into Alertmanager, which sends it to the alert intake. The intake opens a ticket on a git host (or only logs it: a dry run is the default).
+# Start it with ./setup.sh; read README.md first. Ports are bound to 127.0.0.1 only.
+name: dev-foundry-demo
+
+services:
+  weather-api:
+    image: dev-foundry-demo/weather-api:${WEATHER_VERSION:-local}
+    build:
+      context: ./src/weather
+      dockerfile: ../../weather/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__Weather: Data Source=/data/weather.db
+      FrontendOrigin: http://localhost:${WEATHER_WEB_PORT:-8081}
+      ASPNETCORE_URLS: http://+:5080
+    volumes:
+      - weather-data:/data
+    ports:
+      - "127.0.0.1:${WEATHER_API_PORT:-5080}:5080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/5080'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 512m
+
+  weather-web:
+    image: dev-foundry-demo/weather-web:${WEATHER_VERSION:-local}
+    build:
+      context: ./src/weather
+      dockerfile: ../../weather/Dockerfile.web
+      args:
+        VITE_API_URL: http://localhost:${WEATHER_API_PORT:-5080}
+    restart: unless-stopped
+    volumes:
+      - ./weather/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1:${WEATHER_WEB_PORT:-8081}:8080"
+    depends_on:
+      weather-api:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+      # What the "Rule" link in a ticket points to: an address a person can open, not the container's internal name.
+      - --web.external-url=http://localhost:${PROMETHEUS_PORT:-9090}
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./secrets/intake-token:/run/secrets/intake-token:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.26.0
+    restart: unless-stopped
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+
+  # Container state, restarts, memory and CPU, read from the Docker API (cAdvisor cannot see single containers on every host).
+  container-stats:
+    image: python:3.13-alpine
+    restart: unless-stopped
+    command: ["python", "-u", "/app/container_stats.py"]
+    # Reads the Docker socket, which is root on the host: a local demo, nothing more. It only lists and reads this project's containers.
+    user: root
+    environment:
+      COMPOSE_PROJECT: dev-foundry-demo
+    volumes:
+      - ./exporter/container_stats.py:/app/container_stats.py:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+
+  loki:
+    image: grafana/loki:3.4.2
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - ./loki/rules:/loki/rules:ro
+      - loki-data:/loki
+
+  promtail:
+    image: grafana/promtail:3.4.2
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    # Reads the logs of this stack's containers through the Docker socket, which is root on the host: this is a local demo, nothing more.
+    user: root
+    volumes:
+      - ./promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail-positions:/positions
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Run ./setup.sh first}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/overview.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
+      - loki
+
+  # Turns an alert into a ticket: fixed rules, no AI. See ../alert-intake/README.md.
+  alert-intake:
+    image: dev-foundry-demo/alert-intake:local
+    build:
+      context: ../alert-intake
+      target: runtime
+    restart: unless-stopped
+    environment:
+      ALERT_INTAKE_TOKEN: ${ALERT_INTAKE_TOKEN:?Run ./setup.sh first}
+      # Dry run by default: the ticket that would be opened is only written to the log. ./setup.sh --create-tickets turns it off.
+      ALERT_INTAKE_DRY_RUN: ${ALERT_INTAKE_DRY_RUN:-true}
+      ALERT_INTAKE_MAX_TICKETS_PER_HOUR: ${ALERT_INTAKE_MAX_TICKETS_PER_HOUR:-6}
+      ALERT_INTAKE_GROUP_MINUTES: ${ALERT_INTAKE_GROUP_MINUTES:-15}
+      ALERT_INTAKE_LOKI_URL: http://loki:3100
+      # The git hosts a route may name with "host" (see ../alert-intake/README.md#settings): ./setup.sh writes it from the factory's FACTORY_HOSTS, without the tokens during a dry run.
+      ALERT_INTAKE_HOSTS: ${ALERT_INTAKE_HOSTS:?Run ./setup.sh first}
+    volumes:
+      - ./intake-routes/mapping.json:/etc/alert-intake/mapping.json:ro
+    networks: [default, forge]
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "dotnet", "DevFoundry.AlertIntake.dll", "--healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default:
+  # Forgejo's network in the factory's own Compose project, so the intake can reach http://forgejo:3000.
+  forge:
+    external: true
+    name: ${FACTORY_FORGE_NETWORK:-dev-foundry_forge}
+
+volumes:
+  weather-data:
+  prometheus-data:
+  alertmanager-data:
+  loki-data:
+  grafana-data:
+  promtail-positions:
