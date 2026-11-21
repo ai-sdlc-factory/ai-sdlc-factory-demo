@@ -97,7 +97,7 @@ The rules are in `prometheus/rules/weather.yml` and `loki/rules/fake/weather.yml
 | Symptom | Likely cause and fix |
 | --- | --- |
 | `setup.sh` stops with "error getting credentials" while pulling images | Docker's credential helper failed under many parallel pulls (seen under WSL2). Pull the images one at a time (`docker pull prom/alertmanager:v0.28.1`, and so on for the images in `compose.yaml`), then run `./setup.sh` again |
-| "The Docker network dev-foundry_forge does not exist" | the factory is not running: `cd ../../infra && docker compose up -d` |
+| "The Docker network dev-foundry_forge does not exist" | the factory is not running: `cd ../../deploy && docker compose up -d` |
 | an alert fires but no ticket appears | the intake is in dry run (the Overview says so; `./status.sh` too), or the alert matches no route in `intake-routes/mapping.json`, or the hourly limit is reached: `docker compose logs alert-intake` says which |
 | the intake log shows "unauthorized" or Prometheus shows `AlertIntakeRefusingNotifications` | Alertmanager and the intake do not share the token: run `./setup.sh` again (it rewrites `secrets/intake-token` from `.env`) and `docker compose up -d alertmanager alert-intake` |
 | a panel on a dashboard is empty | give it a minute after a restart; then check Prometheus → Status → Targets: every target must be up |
