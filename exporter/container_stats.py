@@ -14,7 +14,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SOCKET = os.environ.get("DOCKER_SOCKET", "/var/run/docker.sock")
-PROJECT = os.environ.get("COMPOSE_PROJECT", "dev-foundry-demo")
+PROJECT = os.environ.get("COMPOSE_PROJECT", "ai-sdlc-factory-demo")
 PORT = int(os.environ.get("PORT", "9101"))
 
 _previous_cpu = {}  # container id -> (wall seconds, total cpu nanoseconds)

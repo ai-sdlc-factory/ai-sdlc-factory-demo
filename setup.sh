@@ -1,7 +1,7 @@
 #!/bin/sh
 # Prepares and starts the demo "production": the shop application (in app/) and its monitoring.
 #   ./setup.sh                   first start; alerts are only logged (a dry run)
-#   ./setup.sh --create-tickets  also let the alert intake open tickets on your git host (if a dev-foundry factory serves that repository, the ticket starts its incident workflow: it spends tokens)
+#   ./setup.sh --create-tickets  also let the alert intake open tickets on your git host (if an AI SDLC Factory serves that repository, the ticket starts its incident workflow: it spends tokens)
 # Safe to run again: it keeps the secrets it generated and only changes what you ask for.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
