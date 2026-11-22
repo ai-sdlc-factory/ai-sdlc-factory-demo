@@ -1,0 +1,6 @@
+{
+  "image": "python",
+  "gates": [
+    { "name": "compile", "command": ["python", "-m", "compileall", "-q", "app/api"], "timeout_seconds": 60 }
+  ]
+}
