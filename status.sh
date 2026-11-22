@@ -68,8 +68,8 @@ try:
     d=json.load(sys.stdin)
 except Exception:
     print('  (git host not reachable)'); sys.exit(0)
-d=[i for i in d if i['title'].startswith('[alert]') and 'pull_request' not in i]
-print('  none' if not d else '')
+d=[i for i in d if i['title'].startswith('[alert]') and not i.get('pull_request')]
+if not d: print('  none')
 for i in d[:8]: print('  #%-4s %-6s %s' % (i['number'], i['state'], i['title'][:90]))" || true
 fi
 
