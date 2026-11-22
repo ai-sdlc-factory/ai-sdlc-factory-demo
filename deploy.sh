@@ -1,7 +1,7 @@
 #!/bin/sh
-# Delivers the default branch of the weather repository to the demo "production": fetch, build images tagged with the commit, switch the
-# containers over, check that they answer, and roll back by itself when they do not.
-#   ./deploy.sh              deliver the latest commit (nothing happens when it is already running)
+# Delivers app/ to the demo "production": build images tagged with this repository's commit, switch the containers over, check that
+# they answer, and roll back by itself when they do not. Change something in app/, commit it, and run this.
+#   ./deploy.sh              deliver the current commit (nothing happens when it is already running)
 #   ./deploy.sh --force      deliver it even when it is already running (rebuilds)
 #   ./deploy.sh --rollback   go back to the previous delivered version
 # Every delivery is a line in deployments.log and a marker on the Grafana dashboard.
@@ -20,12 +20,10 @@ for argument in "$@"; do
 done
 
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
-[ -f .env ] || fail "demo/.env is missing: run ./setup.sh first."
+[ -f .env ] || fail ".env is missing: run ./setup.sh first."
 env_value() { sed -n "s/^$1=//p" .env | head -n 1; }
 set_value() { if grep -q "^$1=" .env; then sed -i "s|^$1=.*|$1=$2|" .env; else printf '%s=%s\n' "$1" "$2" >> .env; fi; }
 
-repo=$(env_value DEMO_REPO); repo=${repo:-valters/weather}
-branch=$(env_value DEMO_BRANCH); branch=${branch:-main}
 current=$(env_value WEATHER_VERSION)
 api_port=$(env_value WEATHER_API_PORT); api_port=${api_port:-5080}
 web_port=$(env_value WEATHER_WEB_PORT); web_port=${web_port:-8081}
@@ -70,23 +68,16 @@ if [ "$mode" = rollback ]; then
     fail "The previous version does not answer either. Look at: docker compose logs weather-api"
 fi
 
-# 1. Fetch the default branch. The token goes in a header for this one command and is never written to the repository's config.
-token=$(env_value FORGEJO_BOT_TOKEN)
-[ -n "$token" ] || fail "FORGEJO_BOT_TOKEN is missing in demo/.env: run ./setup.sh."
-source_dir=src/weather
-url="http://localhost:3000/$repo.git"
-if [ ! -d "$source_dir/.git" ]; then
-    mkdir -p src
-    echo "Cloning $repo ($branch)"
-    git -c http.extraHeader="Authorization: token $token" clone -q --branch "$branch" "$url" "$source_dir"
+# 1. The version is this repository's commit; uncommitted changes in app/ make it "<commit>-dirty" (rebuilt on every run).
+if git rev-parse --git-dir >/dev/null 2>&1 && git rev-parse HEAD >/dev/null 2>&1; then
+    sha=$(git rev-parse --short HEAD)
+    message=$(git log -1 --format=%s | cut -c1-80 | tr -d '"\\')
+    [ -z "$(git status --porcelain -- app)" ] || { sha="$sha-dirty"; message="$message (uncommitted changes in app/)"; }
 else
-    git -C "$source_dir" -c http.extraHeader="Authorization: token $token" fetch -q origin "$branch"
-    git -C "$source_dir" reset -q --hard "origin/$branch"
+    sha=local; message="app/ (not a git checkout)"
 fi
-sha=$(git -C "$source_dir" rev-parse --short HEAD)
-message=$(git -C "$source_dir" log -1 --format=%s | cut -c1-80 | tr -d '"\\')
 
-if [ "$mode" = deploy ] && [ "$sha" = "$current" ] && docker compose ps --status running weather-api 2>/dev/null | grep -q weather-api; then
+if [ "$mode" = deploy ] && [ "$sha" = "$current" ] && [ "${sha%-dirty}" = "$sha" ] && docker compose ps --status running weather-api 2>/dev/null | grep -q weather-api; then
     echo "$sha is already running. Nothing to do (--force rebuilds)."
     exit 0
 fi

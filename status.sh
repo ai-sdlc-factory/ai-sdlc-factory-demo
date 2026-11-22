@@ -56,14 +56,19 @@ heading "Tickets opened from alerts"
 if [ "$(env_value ALERT_INTAKE_DRY_RUN)" = true ]; then
     echo "  dry run: no tickets are opened. ./setup.sh --create-tickets turns that on."
 elif [ "$have_python" = true ]; then
-    repo=$(env_value DEMO_REPO); repo=${repo:-valters/weather}
-    curl -fsS -m 5 -H "Authorization: token $(env_value FORGEJO_BOT_TOKEN)" \
-        "http://localhost:3000/api/v1/repos/$repo/issues?state=all&type=issues&limit=50&q=%5Balert%5D" 2>/dev/null | python3 -c "import json,sys
+    repo=$(env_value DEMO_REPO); kind=$(env_value DEMO_GIT_TYPE); kind=${kind:-forgejo}
+    url=$(env_value DEMO_GIT_URL | sed 's#host.docker.internal#localhost#')
+    if [ "$kind" = github ]; then
+        endpoint="https://api.github.com/repos/$repo/issues?state=all&per_page=50"; auth="Authorization: Bearer $(env_value DEMO_GIT_TOKEN)"
+    else
+        endpoint="${url:-http://localhost:3000}/api/v1/repos/$repo/issues?state=all&type=issues&limit=50&q=%5Balert%5D"; auth="Authorization: token $(env_value DEMO_GIT_TOKEN)"
+    fi
+    curl -fsS -m 5 -H "$auth" "$endpoint" 2>/dev/null | python3 -c "import json,sys
 try:
     d=json.load(sys.stdin)
 except Exception:
-    print('  (Forgejo not reachable)'); sys.exit(0)
-d=[i for i in d if i['title'].startswith('[alert]')]
+    print('  (git host not reachable)'); sys.exit(0)
+d=[i for i in d if i['title'].startswith('[alert]') and 'pull_request' not in i]
 print('  none' if not d else '')
 for i in d[:8]: print('  #%-4s %-6s %s' % (i['number'], i['state'], i['title'][:90]))" || true
 fi

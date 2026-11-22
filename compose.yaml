@@ -1,4 +1,4 @@
-# A "production" for the demo: the weather application, run from the default branch of its repository, with monitoring around it.
+# A "production" for the demo: the weather application (app/), with monitoring around it.
 # Prometheus checks that the API and the web page answer and watches the containers, Loki keeps their logs, Grafana shows both, and an alert
 # fires into Alertmanager, which sends it to the alert intake. The intake opens a ticket on a git host (or only logs it: a dry run is the default).
 # Start it with ./setup.sh; read README.md first. Ports are bound to 127.0.0.1 only.
@@ -8,8 +8,8 @@ services:
   weather-api:
     image: dev-foundry-demo/weather-api:${WEATHER_VERSION:-local}
     build:
-      context: ./src/weather
-      dockerfile: ../../weather/Dockerfile.api
+      context: ./app
+      dockerfile: ../weather/Dockerfile.api
     restart: unless-stopped
     environment:
       ConnectionStrings__Weather: Data Source=/data/weather.db
@@ -30,8 +30,8 @@ services:
   weather-web:
     image: dev-foundry-demo/weather-web:${WEATHER_VERSION:-local}
     build:
-      context: ./src/weather
-      dockerfile: ../../weather/Dockerfile.web
+      context: ./app
+      dockerfile: ../weather/Dockerfile.web
       args:
         VITE_API_URL: http://localhost:${WEATHER_API_PORT:-5080}
     restart: unless-stopped
@@ -140,11 +140,11 @@ services:
       - prometheus
       - loki
 
-  # Turns an alert into a ticket: fixed rules, no AI. See ../alert-intake/README.md.
+  # Turns an alert into a ticket: fixed rules, no AI. Built from a checkout of the dev-foundry-alert-intake repository (README.md says where to get it).
   alert-intake:
     image: dev-foundry-demo/alert-intake:local
     build:
-      context: ../alert-intake
+      context: ${ALERT_INTAKE_SOURCE:-../dev-foundry-alert-intake}
       target: runtime
     restart: unless-stopped
     environment:
@@ -154,11 +154,12 @@ services:
       ALERT_INTAKE_MAX_TICKETS_PER_HOUR: ${ALERT_INTAKE_MAX_TICKETS_PER_HOUR:-6}
       ALERT_INTAKE_GROUP_MINUTES: ${ALERT_INTAKE_GROUP_MINUTES:-15}
       ALERT_INTAKE_LOKI_URL: http://loki:3100
-      # The git hosts a route may name with "host" (see ../alert-intake/README.md#settings): ./setup.sh writes it from the factory's FACTORY_HOSTS, without the tokens during a dry run.
+      # The git hosts a route may name with "host" (see the alert intake's README, Settings): ./setup.sh writes it from DEMO_GIT_*, without the token during a dry run.
       ALERT_INTAKE_HOSTS: ${ALERT_INTAKE_HOSTS:?Run ./setup.sh first}
     volumes:
-      - ./intake-routes/mapping.json:/etc/alert-intake/mapping.json:ro
-    networks: [default, forge]
+      - ./generated/mapping.json:/etc/alert-intake/mapping.json:ro
+    # Lets the intake reach a git host that runs on this machine (a local Forgejo) as host.docker.internal.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     read_only: true
     cap_drop: ["ALL"]
     security_opt: ["no-new-privileges:true"]
@@ -168,13 +169,6 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-
-networks:
-  default:
-  # Forgejo's network in the factory's own Compose project, so the intake can reach http://forgejo:3000.
-  forge:
-    external: true
-    name: ${FACTORY_FORGE_NETWORK:-dev-foundry_forge}
 
 volumes:
   weather-data:

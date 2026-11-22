@@ -1,4 +1,4 @@
-# The weather API as it is published from the repository's default branch. Build context: the checked-out repository (demo/src/weather).
+# The weather API as it is published from app/. Build context: app/
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ENV DOTNET_NOLOGO=1 DOTNET_CLI_TELEMETRY_OPTOUT=1
 WORKDIR /src

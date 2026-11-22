@@ -20,7 +20,7 @@ groups:
           service: monitoring
         annotations:
           summary: The alert intake could not turn an alert into a ticket
-          description: "Forgejo did not accept a ticket or a comment. Alertmanager sends the notification again; see the alert-intake log."
+          description: "The git host did not accept a ticket or a comment. Alertmanager sends the notification again; see the alert-intake log."
 
       - alert: AlertIntakeRateLimited
         expr: increase(alert_intake_outcomes_total{action="rate_limited"}[1h]) > 0
