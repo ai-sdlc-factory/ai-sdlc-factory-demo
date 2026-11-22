@@ -1,6 +1,6 @@
 # AI SDLC Factory demo: a production with monitoring that opens tickets
 
-A small "production" (a small shop in `app/`: a Python API with SQLite and a static page behind nginx) with monitoring around it that **opens a ticket when something breaks**. Everything runs locally in Docker. It shows the whole loop of [ai-sdlc-factory](https://github.com/OWNER/ai-sdlc-factory): a delivery, a failure, an alert, a ticket on a git host and, if a factory serves that repository, its incident workflow. **You do not need the factory to run it**: without one, the tickets are just tickets (or only log lines, in a dry run).
+A small "production" (a small shop in `app/`: a Python API with SQLite and a static page behind nginx) with monitoring around it that **opens a ticket when something breaks**. Everything runs locally in Docker. It shows the whole loop of [ai-sdlc-factory](https://github.com/ai-sdlc-factory/ai-sdlc-factory): a delivery, a failure, an alert, a ticket on a git host and, if a factory serves that repository, its incident workflow. **You do not need the factory to run it**: without one, the tickets are just tickets (or only log lines, in a dry run).
 
 ![Monitoring and alerts](monitoring.svg)
 
@@ -12,14 +12,14 @@ A small "production" (a small shop in `app/`: a Python API with SQLite and a sta
 | Loki + Promtail | the containers' logs, searchable, with alert rules on log lines | (inside the stack) |
 | Alertmanager | groups alerts and sends them on | http://localhost:9093 |
 | Grafana | two dashboards: **Overview** (the home page) and **Shop service** (details) | http://localhost:3001 (user `admin`, password in `.env`) |
-| alert-intake | turns an alert into a ticket on a git host: [its README](https://github.com/OWNER/ai-sdlc-factory-alert-intake) | (inside the stack) |
+| alert-intake | turns an alert into a ticket on a git host: [its README](https://github.com/ai-sdlc-factory/ai-sdlc-factory-alert-intake) | (inside the stack) |
 
 ## Start it
 
 You need Docker with Compose, `curl` and `python3`, and a checkout of the alert intake next to this folder:
 
 ```sh
-git clone https://github.com/OWNER/ai-sdlc-factory-alert-intake ../ai-sdlc-factory-alert-intake   # (or set ALERT_INTAKE_SOURCE in .env)
+git clone https://github.com/ai-sdlc-factory/ai-sdlc-factory-alert-intake ../ai-sdlc-factory-alert-intake   # (or set ALERT_INTAKE_SOURCE in .env)
 ./setup.sh                    # first start: prepares everything; alerts are only LOGGED (a dry run)
 ```
 
@@ -101,7 +101,7 @@ The rules are in `prometheus/rules/shop.yml` and `loki/rules/fake/shop.yml`; the
 - **Local only.** Every port is bound to 127.0.0.1. Promtail and container-stats read the Docker socket, which is root on the host, so this stack is for your own machine, not a server.
 - **It is not the factory's sandbox.** The application runs here with normal networking. The factory's agents never get access to it; they see only what a ticket says.
 - **The frontend's API address is built in** (`http://localhost:5080`), so the application is reachable from your browser on this machine only.
-- **Configuration** (ports, the git host and repository) is in `.env`; `.env.example` lists the keys. The alert intake's settings are in [its README](https://github.com/OWNER/ai-sdlc-factory-alert-intake).
+- **Configuration** (ports, the git host and repository) is in `.env`; `.env.example` lists the keys. The alert intake's settings are in [its README](https://github.com/ai-sdlc-factory/ai-sdlc-factory-alert-intake).
 
 ## If something does not work
 
