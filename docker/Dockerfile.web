@@ -1,0 +1,4 @@
+# The shop page (app/web), served by nginx, which also forwards /api to the API. Build context: app/.
+FROM nginxinc/nginx-unprivileged:1.27-alpine
+COPY web /usr/share/nginx/html
+EXPOSE 8080

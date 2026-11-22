@@ -1,5 +1,5 @@
 #!/bin/sh
-# Stops the demo. --purge also removes its data (the weather database, metrics, logs and dashboards' state).
+# Stops the demo. --purge also removes its data (the shop database, metrics, logs and dashboards' state).
 set -eu
 cd "$(cd "$(dirname "$0")" && pwd)"
 if [ "${1:-}" = --purge ]; then

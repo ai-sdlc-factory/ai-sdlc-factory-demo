@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo shop</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; margin: 0; background: #f7f9fb; color: #1a202c; }
+    main { max-width: 36rem; margin: 2rem auto; padding: 0 1rem; }
+    li { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid #dde3ea; border-radius: 8px; padding: .6rem .9rem; margin: .5rem 0; list-style: none; }
+    ul { padding: 0; } button { font: inherit; padding: .3rem .8rem; border-radius: 6px; border: 1px solid #2b6cb0; background: #2b6cb0; color: #fff; cursor: pointer; }
+    #note { min-height: 1.5rem; color: #4a5568; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Demo shop</h1>
+  <p>The application the demo monitors. Stop its API and watch the alert, the ticket and the dashboards react.</p>
+  <ul id="products"><li>Loading…</li></ul>
+  <p id="note"></p>
+</main>
+<script>
+const note = text => document.getElementById("note").textContent = text;
+async function load() {
+  try {
+    const response = await fetch("/api/products");
+    if (!response.ok) throw new Error(response.status);
+    const products = await response.json();
+    const list = document.getElementById("products");
+    list.replaceChildren(...products.map(p => {
+      const item = document.createElement("li");
+      item.append(`${p.name} — €${p.price.toFixed(2)} `);
+      const button = document.createElement("button");
+      button.textContent = "Order";
+      button.onclick = async () => {
+        const result = await fetch("/api/orders", { method: "POST", body: JSON.stringify({ product_id: p.id, quantity: 1 }) });
+        note(result.ok ? `Ordered ${p.name}.` : "The order failed.");
+      };
+      item.append(button);
+      return item;
+    }));
+  } catch (error) {
+    note("The shop API does not answer.");
+  }
+}
+load();
+</script>
+</body>
+</html>

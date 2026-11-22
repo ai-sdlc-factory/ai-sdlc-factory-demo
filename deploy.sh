@@ -24,9 +24,9 @@ fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 env_value() { sed -n "s/^$1=//p" .env | head -n 1; }
 set_value() { if grep -q "^$1=" .env; then sed -i "s|^$1=.*|$1=$2|" .env; else printf '%s=%s\n' "$1" "$2" >> .env; fi; }
 
-current=$(env_value WEATHER_VERSION)
-api_port=$(env_value WEATHER_API_PORT); api_port=${api_port:-5080}
-web_port=$(env_value WEATHER_WEB_PORT); web_port=${web_port:-8081}
+current=$(env_value SHOP_VERSION)
+api_port=$(env_value SHOP_API_PORT); api_port=${api_port:-5080}
+web_port=$(env_value SHOP_WEB_PORT); web_port=${web_port:-8081}
 grafana_port=$(env_value GRAFANA_PORT); grafana_port=${grafana_port:-3001}
 log=deployments.log
 
@@ -42,7 +42,7 @@ annotate() {
 answers() {
     tries=45
     while [ "$tries" -gt 0 ]; do
-        if curl -fsS -o /dev/null -m 3 "http://127.0.0.1:$api_port/api/cities" 2>/dev/null \
+        if curl -fsS -o /dev/null -m 3 "http://127.0.0.1:$api_port/api/products" 2>/dev/null \
             && curl -fsS -o /dev/null -m 3 "http://127.0.0.1:$web_port/healthz" 2>/dev/null; then return 0; fi
         tries=$((tries - 1)); sleep 2
     done
@@ -50,7 +50,7 @@ answers() {
 }
 
 switch_to() {
-    WEATHER_VERSION=$1 docker compose up -d --no-build weather-api weather-web
+    SHOP_VERSION=$1 docker compose up -d --no-build shop-api shop-web
 }
 
 if [ "$mode" = rollback ]; then
@@ -60,12 +60,12 @@ if [ "$mode" = rollback ]; then
     say "Rolling back from ${current:-unknown} to $previous"
     switch_to "$previous"
     if answers; then
-        set_value WEATHER_VERSION "$previous"; record "$previous" ok; annotate "Rollback to $previous"
+        set_value SHOP_VERSION "$previous"; record "$previous" ok; annotate "Rollback to $previous"
         say "Rolled back to $previous."
         exit 0
     fi
     record "$previous" failed
-    fail "The previous version does not answer either. Look at: docker compose logs weather-api"
+    fail "The previous version does not answer either. Look at: docker compose logs shop-api"
 fi
 
 # 1. The version is this repository's commit; uncommitted changes in app/ make it "<commit>-dirty" (rebuilt on every run).
@@ -77,19 +77,19 @@ else
     sha=local; message="app/ (not a git checkout)"
 fi
 
-if [ "$mode" = deploy ] && [ "$sha" = "$current" ] && [ "${sha%-dirty}" = "$sha" ] && docker compose ps --status running weather-api 2>/dev/null | grep -q weather-api; then
+if [ "$mode" = deploy ] && [ "$sha" = "$current" ] && [ "${sha%-dirty}" = "$sha" ] && docker compose ps --status running shop-api 2>/dev/null | grep -q shop-api; then
     echo "$sha is already running. Nothing to do (--force rebuilds)."
     exit 0
 fi
 
 # 2. Build the images for this commit, then switch the containers over.
 echo "Delivering $sha: $message"
-WEATHER_VERSION=$sha docker compose build weather-api weather-web
+SHOP_VERSION=$sha docker compose build shop-api shop-web
 switch_to "$sha"
 
 # 3. Check it, and go back by itself when it does not answer.
 if answers; then
-    set_value WEATHER_VERSION "$sha"
+    set_value SHOP_VERSION "$sha"
     record "$sha" ok
     annotate "Deployed $sha: $message"
     echo "Delivered $sha."
@@ -103,4 +103,4 @@ if [ -n "$previous" ]; then
     switch_to "$previous"
     answers && { annotate "Delivery of $sha failed; back on $previous"; fail "Delivery of $sha failed; $previous is running again."; }
 fi
-fail "Delivery of $sha failed. See: docker compose logs weather-api"
+fail "Delivery of $sha failed. See: docker compose logs shop-api"

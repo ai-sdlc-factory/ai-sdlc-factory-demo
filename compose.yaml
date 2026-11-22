@@ -1,24 +1,23 @@
-# A "production" for the demo: the weather application (app/), with monitoring around it.
+# A "production" for the demo: the shop application (app/), with monitoring around it.
 # Prometheus checks that the API and the web page answer and watches the containers, Loki keeps their logs, Grafana shows both, and an alert
 # fires into Alertmanager, which sends it to the alert intake. The intake opens a ticket on a git host (or only logs it: a dry run is the default).
 # Start it with ./setup.sh; read README.md first. Ports are bound to 127.0.0.1 only.
 name: dev-foundry-demo
 
 services:
-  weather-api:
-    image: dev-foundry-demo/weather-api:${WEATHER_VERSION:-local}
+  shop-api:
+    image: dev-foundry-demo/shop-api:${SHOP_VERSION:-local}
     build:
       context: ./app
-      dockerfile: ../weather/Dockerfile.api
+      dockerfile: ../docker/Dockerfile.api
     restart: unless-stopped
     environment:
-      ConnectionStrings__Weather: Data Source=/data/weather.db
-      FrontendOrigin: http://localhost:${WEATHER_WEB_PORT:-8081}
-      ASPNETCORE_URLS: http://+:5080
+      DB_PATH: /data/shop.db
+      PORT: "5080"
     volumes:
-      - weather-data:/data
+      - shop-data:/data
     ports:
-      - "127.0.0.1:${WEATHER_API_PORT:-5080}:5080"
+      - "127.0.0.1:${SHOP_API_PORT:-5080}:5080"
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/5080'"]
       interval: 15s
@@ -27,20 +26,18 @@ services:
       start_period: 20s
     mem_limit: 512m
 
-  weather-web:
-    image: dev-foundry-demo/weather-web:${WEATHER_VERSION:-local}
+  shop-web:
+    image: dev-foundry-demo/shop-web:${SHOP_VERSION:-local}
     build:
       context: ./app
-      dockerfile: ../weather/Dockerfile.web
-      args:
-        VITE_API_URL: http://localhost:${WEATHER_API_PORT:-5080}
+      dockerfile: ../docker/Dockerfile.web
     restart: unless-stopped
     volumes:
-      - ./weather/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      - "127.0.0.1:${WEATHER_WEB_PORT:-8081}:8080"
+      - "127.0.0.1:${SHOP_WEB_PORT:-8081}:8080"
     depends_on:
-      weather-api:
+      shop-api:
         condition: service_healthy
 
   prometheus:
@@ -171,7 +168,7 @@ services:
       retries: 5
 
 volumes:
-  weather-data:
+  shop-data:
   prometheus-data:
   alertmanager-data:
   loki-data:

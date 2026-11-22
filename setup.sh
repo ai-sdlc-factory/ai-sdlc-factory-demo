@@ -1,5 +1,5 @@
 #!/bin/sh
-# Prepares and starts the demo "production": the weather application (in app/) and its monitoring.
+# Prepares and starts the demo "production": the shop application (in app/) and its monitoring.
 #   ./setup.sh                   first start; alerts are only logged (a dry run)
 #   ./setup.sh --create-tickets  also let the alert intake open tickets on your git host (if a dev-foundry factory serves that repository, the ticket starts its incident workflow: it spends tokens)
 # Safe to run again: it keeps the secrets it generated and only changes what you ask for.
@@ -24,7 +24,7 @@ command -v docker >/dev/null 2>&1 || fail "Docker is not installed or not on the
 docker compose version >/dev/null 2>&1 || fail "Docker Compose (the 'docker compose' command) is not available."
 docker info >/dev/null 2>&1 || fail "Cannot talk to the Docker daemon. Is it running, and may you use it?"
 for tool in curl python3; do command -v "$tool" >/dev/null 2>&1 || fail "$tool is needed."; done
-[ -d app/src ] || fail "app/ is missing the weather application. See README.md."
+[ -d app/api ] || fail "app/ is missing the shop application. See README.md."
 
 env_value() { sed -n "s/^$1=//p" "$2" 2>/dev/null | head -n 1; }
 random_secret() { head -c 48 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c "$1"; }
@@ -46,7 +46,7 @@ set_value() {
 [ -n "$(env_value ALERT_INTAKE_TOKEN .env)" ] || set_value ALERT_INTAKE_TOKEN "$(random_secret 40)"
 # Where tickets go: DEMO_GIT_TYPE (forgejo or github), DEMO_GIT_URL, DEMO_REPO (owner/name) and, only for real tickets, DEMO_GIT_TOKEN.
 # The alert intake gets them as its own settings: the host list (ALERT_INTAKE_HOSTS, with the token only when tickets are really wanted) and the
-# route table (generated/mapping.json, which sends the weather alerts to DEMO_REPO).
+# route table (generated/mapping.json, which sends the shop alerts to DEMO_REPO).
 [ "$create_tickets" = true ] && set_value ALERT_INTAKE_DRY_RUN false
 [ "$(env_value ALERT_INTAKE_DRY_RUN .env)" = false ] || set_value ALERT_INTAKE_DRY_RUN true
 with_tokens=false
@@ -67,14 +67,14 @@ url = values.get("DEMO_GIT_URL") or ("https://github.com" if kind == "github" el
 host = {"name": kind, "type": kind, "url": url}
 if sys.argv[2] == "true":
     host["token"] = values.get("DEMO_GIT_TOKEN", "")
-repo = values.get("DEMO_REPO") or "owner/weather"
+repo = values.get("DEMO_REPO") or "owner/shop"
 mapping = {"routes": [{
-    "match": {"service": "weather"},
+    "match": {"service": "shop"},
     "repository": repo,
     "labels": ["incident"],
     "evidence": [
-        {"title": "Recent error lines of the API", "query": '{compose_service="weather-api"} |~ "(?i)(error|exception|fatal)"'},
-        {"title": "Last lines of the API log", "query": '{compose_service="weather-api"}'},
+        {"title": "Recent error lines of the API", "query": '{compose_service="shop-api"} |~ "(?i)(error|exception|fatal)"'},
+        {"title": "Last lines of the API log", "query": '{compose_service="shop-api"}'},
     ]}]}
 print(json.dumps([host], separators=(",", ":")))
 print(json.dumps(mapping, indent=2))
@@ -105,8 +105,8 @@ wait_for() {
     say "  FAIL $1 ($2)"; return 1
 }
 failed=0
-wait_for "weather web" "http://127.0.0.1:$(env_value WEATHER_WEB_PORT .env)/healthz" || failed=1
-wait_for "weather API" "http://127.0.0.1:$(env_value WEATHER_API_PORT .env)/api/cities" || failed=1
+wait_for "shop web" "http://127.0.0.1:$(env_value SHOP_WEB_PORT .env)/healthz" || failed=1
+wait_for "shop API" "http://127.0.0.1:$(env_value SHOP_API_PORT .env)/api/products" || failed=1
 wait_for "Prometheus" "http://127.0.0.1:$(env_value PROMETHEUS_PORT .env)/-/ready" || failed=1
 wait_for "Alertmanager" "http://127.0.0.1:$(env_value ALERTMANAGER_PORT .env)/-/ready" || failed=1
 wait_for "Grafana" "http://127.0.0.1:$(env_value GRAFANA_PORT .env)/api/health" || failed=1
@@ -114,7 +114,7 @@ wait_for "Grafana" "http://127.0.0.1:$(env_value GRAFANA_PORT .env)/api/health" 
 
 say ""
 say "The demo is running."
-say "  Application  http://localhost:$(env_value WEATHER_WEB_PORT .env)   (API http://localhost:$(env_value WEATHER_API_PORT .env)/api/cities)"
+say "  Application  http://localhost:$(env_value SHOP_WEB_PORT .env)   (API http://localhost:$(env_value SHOP_API_PORT .env)/api/products)"
 say "  Grafana      http://localhost:$(env_value GRAFANA_PORT .env)   user admin, password in .env (GRAFANA_ADMIN_PASSWORD)"
 say "  Prometheus   http://localhost:$(env_value PROMETHEUS_PORT .env)   Alertmanager http://localhost:$(env_value ALERTMANAGER_PORT .env)"
 if [ "$(env_value ALERT_INTAKE_DRY_RUN .env)" = false ]; then

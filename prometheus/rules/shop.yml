@@ -1,0 +1,59 @@
+# Alerts about the shop service. The label `service: shop` is what the alert intake routes on (see ../../intake-routes/mapping.json).
+groups:
+  - name: shop
+    rules:
+      - alert: ShopApiDown
+        expr: probe_success{job="blackbox-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: The shop API does not answer
+          description: "GET /api/products has failed for more than a minute (probe of {{ $labels.instance }})."
+
+      - alert: ShopWebDown
+        expr: probe_success{job="blackbox-web"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: The shop web page does not answer
+          description: "The web page health check has failed for more than a minute (probe of {{ $labels.instance }})."
+
+      - alert: ShopApiSlow
+        expr: probe_duration_seconds{job="blackbox-api"} > 1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: The shop API is slow
+          description: "GET /api/products has taken more than 1 second for 3 minutes (now {{ $value | printf \"%.2f\" }} s)."
+
+      - alert: ShopApiMemoryHigh
+        expr: demo_container_memory_bytes{service="shop-api"} > 400 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+          service: shop
+        annotations:
+          summary: The shop API uses a lot of memory
+          description: "The API container has used more than 400 MB for 5 minutes (limit 512 MB)."
+
+      - alert: ShopApiRestarting
+        expr: increase(demo_container_restarts{service="shop-api"}[15m]) > 2
+        labels:
+          severity: warning
+          service: shop
+        annotations:
+          summary: The shop API keeps restarting
+          description: "Docker has restarted the API container more than twice in 15 minutes."
+
+      - alert: ShopApiUnhealthy
+        expr: demo_container_health{service="shop-api"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: shop
+        annotations:
+          summary: The shop API container is unhealthy
+          description: "Docker's own health check of the API container has failed for 2 minutes."

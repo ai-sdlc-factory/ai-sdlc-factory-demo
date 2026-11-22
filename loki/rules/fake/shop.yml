@@ -1,0 +1,12 @@
+groups:
+  - name: shop-logs
+    rules:
+      - alert: ShopApiErrorLogs
+        expr: sum(count_over_time({compose_service="shop-api"} |~ "(?i)(error|exception|fatal)" [5m])) > 5
+        for: 0m
+        labels:
+          severity: warning
+          service: shop
+        annotations:
+          summary: The shop API logs errors
+          description: "More than 5 error lines in the API log in 5 minutes."

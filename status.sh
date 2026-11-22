@@ -6,8 +6,8 @@ cd "$(cd "$(dirname "$0")" && pwd)"
 env_value() { sed -n "s/^$1=//p" .env | head -n 1; }
 prom="http://127.0.0.1:$(env_value PROMETHEUS_PORT)"
 alerts="http://127.0.0.1:$(env_value ALERTMANAGER_PORT)"
-api="http://127.0.0.1:$(env_value WEATHER_API_PORT)/api/cities"
-web="http://127.0.0.1:$(env_value WEATHER_WEB_PORT)/healthz"
+api="http://127.0.0.1:$(env_value SHOP_API_PORT)/api/products"
+web="http://127.0.0.1:$(env_value SHOP_WEB_PORT)/healthz"
 grafana="http://localhost:$(env_value GRAFANA_PORT)"
 have_python=true; command -v python3 >/dev/null 2>&1 || have_python=false
 
@@ -28,9 +28,9 @@ heading "Containers"
 docker compose ps --format '  {{.Service}}\t{{.Status}}' | sort
 
 heading "The application"
-probe "API  (GET /api/cities)" "$api"
+probe "API  (GET /api/products)" "$api"
 probe "Web  (/healthz)" "$web"
-printf '  version delivered      %s\n' "$(env_value WEATHER_VERSION)"
+printf '  version delivered      %s\n' "$(env_value SHOP_VERSION)"
 
 heading "Alerts in Prometheus (pending = waiting out its 'for' time)"
 json "$prom/api/v1/alerts" "

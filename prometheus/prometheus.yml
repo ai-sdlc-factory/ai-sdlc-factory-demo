@@ -44,9 +44,9 @@ scrape_configs:
     params:
       module: [http_2xx]
     static_configs:
-      - targets: ["http://weather-api:5080/api/cities"]
+      - targets: ["http://shop-api:5080/api/products"]
         labels:
-          service: weather
+          service: shop
           component: api
     relabel_configs:
       - source_labels: [__address__]
@@ -61,9 +61,9 @@ scrape_configs:
     params:
       module: [http_2xx]
     static_configs:
-      - targets: ["http://weather-web:8080/healthz"]
+      - targets: ["http://shop-web:8080/healthz"]
         labels:
-          service: weather
+          service: shop
           component: web
     relabel_configs:
       - source_labels: [__address__]

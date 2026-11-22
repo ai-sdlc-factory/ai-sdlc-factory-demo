@@ -1,6 +1,6 @@
 {
-  "uid": "weather-service",
-  "title": "Weather service",
+  "uid": "shop-service",
+  "title": "Shop service",
   "tags": [
     "demo"
   ],
@@ -200,7 +200,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(ALERTS{alertstate=\"firing\",service=\"weather\"}) or vector(0)",
+          "expr": "count(ALERTS{alertstate=\"firing\",service=\"shop\"}) or vector(0)",
           "instant": true,
           "datasource": {
             "type": "prometheus",
@@ -312,7 +312,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(count_over_time({compose_service=\"weather-api\"} |~ \"(?i)(error|exception|fatal)\" [5m])) or vector(0)",
+          "expr": "sum(count_over_time({compose_service=\"shop-api\"} |~ \"(?i)(error|exception|fatal)\" [5m])) or vector(0)",
           "queryType": "instant",
           "datasource": {
             "type": "loki",
@@ -415,7 +415,7 @@
       },
       "targets": [
         {
-          "expr": "demo_container_memory_bytes{service=\"weather-api\"}",
+          "expr": "demo_container_memory_bytes{service=\"shop-api\"}",
           "legendFormat": "working set",
           "refId": "A",
           "datasource": {
@@ -453,7 +453,7 @@
       },
       "targets": [
         {
-          "expr": "demo_container_cpu_cores{service=\"weather-api\"}",
+          "expr": "demo_container_cpu_cores{service=\"shop-api\"}",
           "legendFormat": "cores",
           "refId": "A",
           "datasource": {
@@ -491,7 +491,7 @@
       },
       "targets": [
         {
-          "expr": "sum(count_over_time({compose_service=\"weather-api\"} |~ \"(?i)(error|exception|fatal)\" [1m]))",
+          "expr": "sum(count_over_time({compose_service=\"shop-api\"} |~ \"(?i)(error|exception|fatal)\" [1m]))",
           "legendFormat": "errors",
           "queryType": "range",
           "refId": "A",
@@ -531,7 +531,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{compose_service=~\"weather-api|weather-web\"}",
+          "expr": "{compose_service=~\"shop-api|shop-web\"}",
           "queryType": "range",
           "datasource": {
             "type": "loki",

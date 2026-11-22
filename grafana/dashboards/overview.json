@@ -48,9 +48,9 @@
   },
   "links": [
     {
-      "title": "Weather service (details)",
+      "title": "Shop service (details)",
       "type": "link",
-      "url": "/d/weather-service",
+      "url": "/d/shop-service",
       "icon": "dashboard"
     }
   ],
@@ -932,7 +932,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{compose_service=~\"weather-api|weather-web|alert-intake\"}",
+          "expr": "{compose_service=~\"shop-api|shop-web|alert-intake\"}",
           "queryType": "range",
           "datasource": {
             "type": "loki",
