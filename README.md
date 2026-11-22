@@ -112,3 +112,7 @@ The rules are in `prometheus/rules/shop.yml` and `loki/rules/fake/shop.yml`; the
 | the intake log shows "unauthorized" or Prometheus shows `AlertIntakeRefusingNotifications` | Alertmanager and the intake do not share the token: run `./setup.sh` again (it rewrites `secrets/intake-token` from `.env`) and `docker compose up -d alertmanager alert-intake` |
 | a panel on a dashboard is empty | give it a minute after a restart; then check Prometheus → Status → Targets: every target must be up |
 | `deploy.sh` says a version does not answer | it rolled back by itself; look at `docker compose logs shop-api` for the failed version |
+
+## License
+
+[MIT](LICENSE).
