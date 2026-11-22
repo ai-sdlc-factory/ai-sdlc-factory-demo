@@ -97,6 +97,7 @@ The rules are in `prometheus/rules/shop.yml` and `loki/rules/fake/shop.yml`; the
 
 ## What to know
 
+- **Other software.** The stack pulls Prometheus, Alertmanager, Grafana, Loki, Promtail, the blackbox exporter, nginx and Python as separate Docker images, each under its own license; they are not part of this repository.
 - **Local only.** Every port is bound to 127.0.0.1. Promtail and container-stats read the Docker socket, which is root on the host, so this stack is for your own machine, not a server.
 - **It is not the factory's sandbox.** The application runs here with normal networking. The factory's agents never get access to it; they see only what a ticket says.
 - **The frontend's API address is built in** (`http://localhost:5080`), so the application is reachable from your browser on this machine only.
@@ -108,7 +109,7 @@ The rules are in `prometheus/rules/shop.yml` and `loki/rules/fake/shop.yml`; the
 | --- | --- |
 | `setup.sh` stops with "error getting credentials" while pulling images | Docker's credential helper failed under many parallel pulls (seen under WSL2). Pull the images one at a time (`docker pull prom/alertmanager:v0.28.1`, and so on for the images in `compose.yaml`), then run `./setup.sh` again |
 | `docker compose` cannot find the alert intake's source | clone it next to this folder (see "Start it") or set `ALERT_INTAKE_SOURCE` in `.env` |
-| an alert fires but no ticket appears | the intake is in dry run (the Overview says so; `./status.sh` too), or the token or repository is wrong (`docker compose logs alert-intake`), or the alert matches no route in `intake-routes/mapping.json`, or the hourly limit is reached: `docker compose logs alert-intake` says which |
+| an alert fires but no ticket appears | the intake is in dry run (the Overview says so; `./status.sh` too), or the token or repository is wrong (`docker compose logs alert-intake`), or the alert matches no route in `generated/mapping.json` (it sends the `shop` alerts to `DEMO_REPO`), or the hourly limit is reached: `docker compose logs alert-intake` says which |
 | the intake log shows "unauthorized" or Prometheus shows `AlertIntakeRefusingNotifications` | Alertmanager and the intake do not share the token: run `./setup.sh` again (it rewrites `secrets/intake-token` from `.env`) and `docker compose up -d alertmanager alert-intake` |
 | a panel on a dashboard is empty | give it a minute after a restart; then check Prometheus → Status → Targets: every target must be up |
 | `deploy.sh` says a version does not answer | it rolled back by itself; look at `docker compose logs shop-api` for the failed version |

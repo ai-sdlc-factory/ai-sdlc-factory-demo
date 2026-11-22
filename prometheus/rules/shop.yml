@@ -1,4 +1,4 @@
-# Alerts about the shop service. The label `service: shop` is what the alert intake routes on (see ../../intake-routes/mapping.json).
+# Alerts about the shop service. The label `service: shop` is what the alert intake routes on (the route table is generated/mapping.json, written by setup.sh).
 groups:
   - name: shop
     rules:
